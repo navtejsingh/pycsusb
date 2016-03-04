@@ -5,7 +5,7 @@ import numpy as np
 from photutils.morphology import centroid_com, centroid_1dg, centroid_2dg
 
 
-def recenter(image, pos, window_size = 15, method = "2dg"):
+def recenter(image, pos, window_size = 15, method = "2dg", threshold = 10.):
     """
     Recenter each star in each frame of the image cube before performing
     aperture photometry to take care of slight misalignments between frames
@@ -26,6 +26,10 @@ def recenter(image, pos, window_size = 15, method = "2dg"):
     method : string
         Method used to find center of the star. Options are 1d Gaussian fit,
         2d gaussian fit or com (center of mass)    
+
+    threshold : int
+	Threshold of star movement in pixels. If shift between old and new
+	coordinates is > threshold, old value is assigned to new coordinates.	
                     
     Returns
     -------
@@ -36,6 +40,8 @@ def recenter(image, pos, window_size = 15, method = "2dg"):
     
     ny, nx = image.shape        
     window_size = int(window_size)
+    threshold = float(threshold)
+
     nstars = pos.shape[0]
         
     star_pos = np.zeros([nstars,2], dtype = np.float32)
@@ -64,7 +70,7 @@ def recenter(image, pos, window_size = 15, method = "2dg"):
         elif method == "com":
             xcen, ycen = centroid_com(image[ymin:ymax,xmin:xmax])
         
-        if (np.abs(xmin + xcen - x)) > 3. or (np.abs(ymin + ycen - y)) > 3.:
+        if (np.abs(xmin + xcen - x)) > 10. or (np.abs(ymin + ycen - y)) > 10.:
             star_pos[i,0] = x
             star_pos[i,1] = y
         else:

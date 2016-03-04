@@ -103,7 +103,7 @@ def timedelta(dt1, dt2):
     return deltatime.seconds
                                                                                                
                                                                                                                                                                                                                                                                
-def process(infile, coords, method, inner_radius, outer_radius, cen_method, window_size, output):
+def process(infile, coords, method, inner_radius, outer_radius, cen_method, window_size, threshold, output):
     """
     Entry point function to process science image.
     
@@ -151,6 +151,9 @@ def process(infile, coords, method, inner_radius, outer_radius, cen_method, wind
 
     # Number of images
     nimgs = len(images)
+	
+    # Read star coordinate
+    pos = np.loadtxt(coords, ndmin = 2)	
 
     dtype = [("DATETIME", "S25"),("XCEN", "f4"),("YCEN", "f4"),("MSKY", "f8"),("NSKY", "f8"),("AREA", "f8"),("FLUX_ADU", "f8"),("FLUX_ELEC", "f8"),("FERR", "f8"),("MAG", "f8")]
     phot_data = np.zeros([nimgs], dtype = dtype)
@@ -158,10 +161,9 @@ def process(infile, coords, method, inner_radius, outer_radius, cen_method, wind
         sci_file = images[i]
         print "  Processing science image %s" %sci_file
 
-        # Read FITS image and star coordinate
+        # Read FITS image
         image = csusb.fitsread(sci_file)
-        pos = np.loadtxt(coords, ndmin = 2)
-
+        
         # Instantiate an Aperphot object
         ap = csusb.Aperphot(sci_file, coords)
         
@@ -177,7 +179,7 @@ def process(infile, coords, method, inner_radius, outer_radius, cen_method, wind
         print "  Nominal aperture radius : %4.1f pixels" %nom_aper
            
         # Perform aperture photometry on all the frames
-        objpos = csusb.recenter(image, pos, window_size, cen_method)
+        objpos = csusb.recenter(image, pos, window_size, cen_method, threshold)
         aperphot_data = ap.phot(image, objpos, nom_aper)
         pos = np.copy(objpos)
             
@@ -253,6 +255,10 @@ if __name__ == "__main__":
                     action="store", metavar="WINDOW_SIZE", help = "Window size for centroid (default is 45)",
                     default = 45
                     )
+    parser.add_option("-t", "--threshold", dest = "threshold",
+                    action="store", metavar="THRESHOLD", help = "Shift threshold in pixels (default is 10)",
+                    default = 10
+                    )
     parser.add_option("-o", "--output", dest = "output",
                     action="store", metavar="OUTPUT", help = "Output file name",
                     default = ""
@@ -271,7 +277,7 @@ if __name__ == "__main__":
     # Switch off warnings
     warnings.filterwarnings('ignore')
     
-    process(args[0], args[1], options.method, options.inner_radius, options.outer_radius, options.cen_method, options.window_size, options.output)    
+    process(args[0], args[1], options.method, options.inner_radius, options.outer_radius, options.cen_method, options.window_size, options.threshold, options.output)    
 
     # Reset verbosity
     if not options.verbose:

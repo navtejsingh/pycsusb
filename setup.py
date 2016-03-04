@@ -13,7 +13,7 @@ setup(
       
       package_data = {
         # If any package contains *.txt, *.rst or *.fits files, include them:
-        '': ['*.txt', '*.rst', '*.fits']
+        '': ['*.txt', '*.rst', '*.fits', "*.cfg"]
       },
       
       # Metadata for upload to PyPI
