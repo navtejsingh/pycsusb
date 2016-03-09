@@ -70,10 +70,11 @@ def plotter(phot_data, ts, outfile):
     plt.rcParams.update(params)
 	   
     plt.figure(figsize=(6,4))
-    plt.title("Normalized Light Curve : %s" %phot_data[0]['DATETIME'].split('T')[0])
+    plt.title("Normalized Light Curve : %s" %phot_data[0,0]['DATETIME'].split('T')[0])
     plt.xlabel("Time (secs)")
     plt.ylabel("Normalized Flux")
-    plt.plot(ts, phot_data['FLUX_ADU']/np.mean(phot_data['FLUX_ADU']), "r-")    
+    for i in range(phot_data.shape[1]):
+        plt.plot(ts, phot_data[:,i]['FLUX_ADU']/np.mean(phot_data[:,i]['FLUX_ADU']))
     plt.savefig(outfile, dpi = 300, bbox_inches = "tight")
     
     return
@@ -153,10 +154,11 @@ def process(infile, coords, method, inner_radius, outer_radius, cen_method, wind
     nimgs = len(images)
 	
     # Read star coordinate
-    pos = np.loadtxt(coords, ndmin = 2)	
+    pos = np.loadtxt(coords, ndmin = 2)
+    nstars = pos.shape[0]
 
     dtype = [("DATETIME", "S25"),("XCEN", "f4"),("YCEN", "f4"),("MSKY", "f8"),("NSKY", "f8"),("AREA", "f8"),("FLUX_ADU", "f8"),("FLUX_ELEC", "f8"),("FERR", "f8"),("MAG", "f8")]
-    phot_data = np.zeros([nimgs], dtype = dtype)
+    phot_data = np.zeros([nimgs, nstars], dtype = dtype)
     for i in range(nimgs):
         sci_file = images[i]
         print "  Processing science image %s" %sci_file
@@ -167,7 +169,7 @@ def process(infile, coords, method, inner_radius, outer_radius, cen_method, wind
         # Instantiate an Aperphot object
         ap = csusb.Aperphot(sci_file, coords)
         
-        # Set fwhmpsf, sigma, annulus and dannulus
+        # Set sigma, annulus and dannulus
         ap.method = method
         ap.inner_radius = inner_radius
         ap.outer_radius = outer_radius
@@ -175,27 +177,26 @@ def process(infile, coords, method, inner_radius, outer_radius, cen_method, wind
         # Determine nominal aperture radius for photometry
         if i == 0:
             nom_aper = ap.cog(window_size, cen_method)
-         
-        print "  Nominal aperture radius : %4.1f pixels" %nom_aper
+            print "  Nominal aperture radius : %4.1f pixels" %nom_aper
            
         # Perform aperture photometry on all the frames
         objpos = csusb.recenter(image, pos, window_size, cen_method, threshold)
         aperphot_data = ap.phot(image, objpos, nom_aper)
         pos = np.copy(objpos)
             
-        phot_data[i]['DATETIME'] = ap.utcstart
-        phot_data[i]['XCEN'] = aperphot_data["xcenter_raw"]
-        phot_data[i]['YCEN'] = aperphot_data["ycenter_raw"]
-        phot_data[i]['MSKY'] = aperphot_data["msky"]
-        phot_data[i]['NSKY'] = aperphot_data["nsky"]
-        phot_data[i]['AREA'] = aperphot_data["area"]
-        phot_data[i]['FLUX_ADU'] = aperphot_data["flux"]
-        phot_data[i]['FLUX_ELEC'] = phot_data[i]['FLUX_ADU'] * ap.epadu
-        phot_data[i]['MAG'] = ap.zmag - 2.5 * np.log10(phot_data[i]['FLUX_ELEC']/ap.exptime)
+        phot_data[i,:]['DATETIME'] = ap.utcstart
+        phot_data[i,:]['XCEN'] = aperphot_data["xcenter_raw"]
+        phot_data[i,:]['YCEN'] = aperphot_data["ycenter_raw"]
+        phot_data[i,:]['MSKY'] = aperphot_data["msky"]
+        phot_data[i,:]['NSKY'] = aperphot_data["nsky"]
+        phot_data[i,:]['AREA'] = aperphot_data["area"]
+        phot_data[i,:]['FLUX_ADU'] = aperphot_data["flux"]
+        phot_data[i,:]['FLUX_ELEC'] = phot_data[i,:]['FLUX_ADU'] * ap.epadu
+        phot_data[i,:]['MAG'] = ap.zmag - 2.5 * np.log10(phot_data[i,:]['FLUX_ELEC']/ap.exptime)
             
         # Calculate error in flux - using the formula
         # err = sqrt(flux * gain + npix * (1 + (npix/nsky)) * (flux_sky * gain + R**2))
-        phot_data[i]['FERR'] = np.sqrt(phot_data[i]['FLUX_ELEC'] + phot_data[i]['AREA'] * (1 + phot_data[i]['AREA']/phot_data[i]['NSKY']) * (phot_data[i]['MSKY'] * ap.epadu + ap.readnoise**2))
+        phot_data[i,:]['FERR'] = np.sqrt(phot_data[i]['FLUX_ELEC'] + phot_data[i]['AREA'] * (1 + phot_data[i]['AREA']/phot_data[i]['NSKY']) * (phot_data[i]['MSKY'] * ap.epadu + ap.readnoise**2))
                         
     # Save photometry data in numpy binary format
     print "  Saving photometry data as numpy binary"
@@ -217,7 +218,7 @@ def process(infile, coords, method, inner_radius, outer_radius, cen_method, wind
             plt_outfile = sci_file.replace(".fits", ".lc.png")
         ts = np.zeros(nimgs, dtype = np.int32)
         for i in range(nimgs):
-            ts[i] = timedelta(phot_data[0]['DATETIME'], phot_data[i]['DATETIME'])    
+            ts[i] = timedelta(phot_data[0,0]['DATETIME'], phot_data[i,0]['DATETIME'])    
         plotter(phot_data, ts, plt_outfile)
         
     return

@@ -41,7 +41,6 @@ def recenter(image, pos, window_size = 15, method = "2dg", threshold = 10.):
     ny, nx = image.shape        
     window_size = int(window_size)
     threshold = float(threshold)
-
     nstars = pos.shape[0]
         
     star_pos = np.zeros([nstars,2], dtype = np.float32)
@@ -70,7 +69,7 @@ def recenter(image, pos, window_size = 15, method = "2dg", threshold = 10.):
         elif method == "com":
             xcen, ycen = centroid_com(image[ymin:ymax,xmin:xmax])
         
-        if (np.abs(xmin + xcen - x)) > 10. or (np.abs(ymin + ycen - y)) > 10.:
+        if (np.abs(xmin + xcen - x)) > threshold or (np.abs(ymin + ycen - y)) > threshold:
             star_pos[i,0] = x
             star_pos[i,1] = y
         else:

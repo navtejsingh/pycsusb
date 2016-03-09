@@ -69,22 +69,19 @@ class Aperphot:
             Nominal aperture radius for photmetry
         """
         # Aperture values in pixels
-        apertures = np.array([2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25])
-        naper = apertures.shape[0]
-        
-        # Randomly peform curve of growth on 5 frames
         apertures = np.linspace(2,25,24)
+        naper = apertures.shape[0]
         
         # Read input image and star position
         image = csusb.fitsread(self.sci_file)
         pos = np.loadtxt(self.coords, ndmin = 2)
+        nstars = pos.shape[0]
         
         # Iterate through the frames and determine nominal aperture
-        nom_aper = np.zeros(5, dtype = np.float32)
         mags_arr = np.zeros(len(apertures))
         objpos = csusb.recenter(image, pos, window_size, method)
         for i in range(naper):
-            flux = self.phot(image, objpos, aper = apertures[i])
+            flux = self.phot(image, objpos[0,:], aper = apertures[i])
             mags_arr[i] = -2.5 * np.log10(flux['flux'])
         mags_diff = np.diff(mags_arr)
         idx = np.where(np.abs(mags_diff) < 0.01)
